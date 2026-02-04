@@ -175,8 +175,22 @@ with col1:
             # Run detection
             with st.spinner("Detecting cards..."):
                 result = utils.detect_cards(image, CLIENT)
+                
+                # Debug: Show raw API response
+                with st.expander("🔍 Debug Info (Click to see API response)"):
+                    st.json(result)
+                
                 if 'predictions' in result:
-                    predictions = utils.filter_duplicates(result['predictions'])
+                    raw_predictions = result['predictions']
+                    st.info(f"📊 Found {len(raw_predictions)} raw predictions from API")
+                    
+                    # Show confidence scores of raw predictions
+                    if raw_predictions:
+                        confidences = [p.get('confidence', 0) for p in raw_predictions]
+                        st.write(f"Confidence scores: {[f'{c:.2%}' for c in confidences]}")
+                    
+                    predictions = utils.filter_duplicates(raw_predictions)
+                    st.info(f"✅ {len(predictions)} predictions after filtering (confidence >= {config.CONFIDENCE_THRESHOLD})")
                     
                     if predictions:
                         # Draw on image

@@ -79,8 +79,11 @@ def detect_cards(image, client):
             version = "1"
         
         # Roboflow serverless inference endpoint format
-        # https://serverless.roboflow.com/{workspace}/{project}/{version}
-        url = f"{config.API_URL}/{workspace_project}/{version}"
+        # Try different endpoint formats
+        # Format 1: https://serverless.roboflow.com/{workspace}/{project}/{version}
+        # Format 2: https://serverless.roboflow.com/infer/{model_id}
+        # Let's try the model_id format first as it's more standard
+        url = f"{config.API_URL}/infer/{config.MODEL_ID}"
         
         files = {
             'file': ('image.jpg', img_bytes, 'image/jpeg')
@@ -98,6 +101,20 @@ def detect_cards(image, client):
         response.raise_for_status()
         
         result = response.json()
+        
+        # Debug: Log the response structure (only in development)
+        # st.write("API Response:", result)  # Uncomment for debugging
+        
+        # Ensure result has predictions key
+        if 'predictions' not in result:
+            # Roboflow might return data in different format
+            if 'results' in result:
+                result['predictions'] = result['results']
+            elif isinstance(result, list):
+                result = {'predictions': result}
+            elif 'detections' in result:
+                result['predictions'] = result['detections']
+        
         return result
         
     except requests.exceptions.RequestException as e:
