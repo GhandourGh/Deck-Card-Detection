@@ -27,8 +27,12 @@ st.set_page_config(
 # Load CSS
 load_css()
 
-# Initialize client
-CLIENT = utils.get_client()
+# Initialize client (with error handling)
+try:
+    CLIENT = utils.get_client()
+except Exception as e:
+    st.error("Failed to initialize API client. Please check your configuration.")
+    st.stop()
 
 class CardDetector(VideoProcessorBase):
     def __init__(self):

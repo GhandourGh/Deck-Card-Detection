@@ -13,9 +13,30 @@ from src import config
 @st.cache_resource
 def get_client():
     """Get cached Roboflow inference client."""
+    try:
+        api_key = st.secrets["ROBOFLOW_API_KEY"]
+    except KeyError:
+        st.error("""
+        ⚠️ **API Key Missing!**
+        
+        Please add your Roboflow API key to Streamlit Cloud secrets:
+        
+        1. Go to your app dashboard on Streamlit Cloud
+        2. Click **Settings** (⚙️ icon)
+        3. Go to **Secrets** tab
+        4. Add the following:
+        
+        ```toml
+        ROBOFLOW_API_KEY = "your-api-key-here"
+        ```
+        
+        5. Click **Save** and the app will redeploy
+        """)
+        st.stop()
+    
     return InferenceHTTPClient(
         api_url=config.API_URL,
-        api_key=st.secrets["ROBOFLOW_API_KEY"]
+        api_key=api_key
     )
 
 
