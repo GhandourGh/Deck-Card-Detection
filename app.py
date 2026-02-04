@@ -93,12 +93,48 @@ st.markdown("""
 col1, col2 = st.columns([2, 1], gap="small")
 
 with col1:
-    ctx = webrtc_streamer(
-        key="card-detection",
-        video_processor_factory=CardDetector,
-        media_stream_constraints={"video": True, "audio": False},
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-    )
+    try:
+        ctx = webrtc_streamer(
+            key="card-detection",
+            video_processor_factory=CardDetector,
+            media_stream_constraints={
+                "video": {
+                    "width": {"ideal": 640},
+                    "height": {"ideal": 480},
+                },
+                "audio": False
+            },
+            rtc_configuration={
+                "iceServers": [
+                    {"urls": ["stun:stun.l.google.com:19302"]},
+                    {"urls": ["stun:stun1.l.google.com:19302"]}
+                ]
+            },
+            async_processing=True
+        )
+    except AttributeError as e:
+        # Handle WebRTC initialization issues gracefully
+        st.warning("⚠️ **Camera initialization in progress...**")
+        st.info("""
+        **Please wait for the camera to initialize.**
+        
+        If the camera doesn't appear:
+        - Click "Start" button if available
+        - Grant camera permissions when prompted
+        - Try refreshing the page
+        - Ensure you're using HTTPS (required for camera access)
+        """)
+        ctx = None
+    except Exception as e:
+        st.error(f"⚠️ **Camera initialization error**: {str(e)}")
+        st.info("""
+        **Troubleshooting:**
+        - Make sure you've granted camera permissions
+        - Try refreshing the page
+        - Ensure your browser supports WebRTC
+        - Check that HTTPS is enabled (required for camera access)
+        """)
+        ctx = None
 
 with col2:
     total_cards = sum(data["count"] for data in st.session_state.card_history.values()) if st.session_state.card_history else 0
@@ -135,7 +171,7 @@ with col2:
         """, unsafe_allow_html=True)
 
 # Update loop - continuously check for new card detections
-if ctx.state.playing and ctx.video_processor:
+if ctx and hasattr(ctx, 'state') and ctx.state.playing and ctx.video_processor:
     while ctx.state.playing and ctx.video_processor:
         try:
             predictions = ctx.video_processor.get_predictions()
