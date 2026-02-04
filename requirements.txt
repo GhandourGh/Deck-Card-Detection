@@ -1,0 +1,7 @@
+streamlit
+Pillow
+inference-sdk
+numpy
+streamlit-webrtc
+av
+opencv-python

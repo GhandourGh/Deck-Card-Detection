@@ -1,0 +1,227 @@
+#MainMenu, footer, header {visibility: hidden;}
+
+.stApp {
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+}
+
+.main .block-container {
+    padding-top: 0rem;
+    padding-bottom: 0.5rem;
+    max-width: 100%;
+}
+
+.stMainBlockContainer {
+    padding-top: 0px;
+}
+
+.stApp > header {
+    visibility: hidden;
+    height: 0;
+}
+
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column"] > [data-testid="stVerticalBlock"] {
+    gap: 0.5rem;
+}
+
+.element-container {
+    margin-bottom: 0.5rem;
+}
+
+.stButton {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.main-header {
+    text-align: center;
+    padding: 5px 0 8px 0;
+    margin-bottom: 0;
+}
+
+.main-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 2px;
+}
+
+.main-subtitle {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 10px 15px;
+    margin-bottom: 0;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #8b5cf6;
+}
+
+.section-title {
+    color: #9ca3af;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 5px;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.card-item {
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 4px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.card-item:hover {
+    background: rgba(255,255,255,0.05);
+    transform: translateX(5px);
+}
+
+.card-item.hearts, .card-item.diamonds {
+    border-left-color: #ef4444;
+}
+
+.card-item.spades, .card-item.clubs {
+    border-left-color: #6366f1;
+}
+
+.card-name {
+    color: #f3f4f6;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.card-confidence {
+    color: #6b7280;
+    font-size: 0.8rem;
+    background: rgba(255,255,255,0.05);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 10px 20px;
+    color: #4b5563;
+}
+
+.empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+    opacity: 0.5;
+}
+
+.stButton > button {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #9ca3af;
+    border-radius: 10px;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+}
+
+.stButton > button:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+.footer {
+    text-align: center;
+    padding: 5px 0 5px 0;
+    color: #374151;
+    font-size: 0.8rem;
+}
+
+.footer a {
+    color: #6366f1;
+    text-decoration: none;
+}
+
+.navbar {
+    background: rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,1);
+    padding: 7px 0px;
+    margin: 0px 0px 0px 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    transform: none;
+    height: 75px;
+    gap: 0px;
+    opacity: 1;
+    border-radius: 0px;
+    line-height: 27px;
+    letter-spacing: 0px;
+    vertical-align: bottom;
+    text-align: center;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 900;
+    background: linear-gradient(241.39deg, rgba(102, 126, 234, 1) 0%, rgba(118, 75, 162, 1) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    line-height: 36px;
+    vertical-align: middle;
+    letter-spacing: 3.9px;
+    margin: 0px;
+    height: 32px;
+    justify-content: flex-start;
+}
+
+.navbar-subtitle {
+    color: #6b7280;
+    font-size: 0.75rem;
+    margin-left: 8px;
+}
+

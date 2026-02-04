@@ -1,0 +1,4 @@
+"""
+CardScan application source package.
+"""
+
