@@ -6,6 +6,7 @@ from io import BytesIO
 import base64
 import cv2
 import streamlit as st
+import requests
 from inference_sdk import InferenceHTTPClient
 from src import config
 
@@ -52,26 +53,65 @@ def detect_cards(image, client):
         dict: API response with predictions
     """
     try:
-        # Roboflow SDK can accept PIL Image directly
-        # Convert to RGB if necessary (some images might be RGBA)
+        # Convert to RGB if necessary
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Pass PIL Image directly to the infer method
-        result = client.infer(image, model_id=config.MODEL_ID)
+        # Save image to bytes
+        img_byte_arr = BytesIO()
+        image.save(img_byte_arr, format='JPEG', quality=95)
+        img_bytes = img_byte_arr.getvalue()
+        
+        # Get API key from secrets
+        api_key = st.secrets["ROBOFLOW_API_KEY"]
+        
+        # Parse model_id (format: "workspace/project/version")
+        # MODEL_ID is "playing-cards-ow27d/4"
+        # Need to split into workspace/project and version
+        model_parts = config.MODEL_ID.split('/')
+        if len(model_parts) == 2:
+            workspace_project = model_parts[0]  # "playing-cards-ow27d"
+            version = model_parts[1]  # "4"
+        else:
+            # Fallback if format is different
+            workspace_project = config.MODEL_ID
+            version = "1"
+        
+        # Make direct API call with proper headers
+        url = f"{config.API_URL}/{workspace_project}/{version}"
+        
+        files = {
+            'file': ('image.jpg', img_bytes, 'image/jpeg')
+        }
+        
+        headers = {
+            'Authorization': f'Bearer {api_key}'
+        }
+        
+        params = {
+            'api_key': api_key
+        }
+        
+        response = requests.post(url, files=files, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        
+        result = response.json()
         return result
-    except Exception as e:
-        st.error(f"Error detecting cards: {str(e)}")
-        # Try fallback method with base64 if direct PIL fails
+        
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error detecting cards (HTTP): {str(e)}")
+        # Try SDK method as fallback
         try:
-            img_byte_arr = BytesIO()
-            image.save(img_byte_arr, format='PNG')
-            img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
-            result = client.infer(img_base64, model_id=config.MODEL_ID)
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            result = client.infer(image, model_id=config.MODEL_ID)
             return result
         except Exception as e2:
-            st.error(f"Fallback method also failed: {str(e2)}")
+            st.error(f"SDK fallback also failed: {str(e2)}")
             return {'predictions': []}
+    except Exception as e:
+        st.error(f"Error detecting cards: {str(e)}")
+        return {'predictions': []}
 
 
 def get_full_card_name(card_name):
