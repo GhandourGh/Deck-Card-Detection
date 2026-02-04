@@ -170,42 +170,14 @@ with col1:
         if uploaded_file is not None:
             # Process uploaded image
             image = Image.open(uploaded_file)
-            img_width, img_height = image.size
-            st.image(image, caption=f"Uploaded Image ({img_width}x{img_height}px)", use_container_width=True)
-            
-            # Warn if image is too small
-            if img_width < 300 or img_height < 300:
-                st.warning(f"⚠️ Image is quite small ({img_width}x{img_height}px). Larger images (800x600px or more) work better for detection.")
             
             # Run detection
             with st.spinner("Detecting cards..."):
                 result = utils.detect_cards(image, CLIENT)
                 
-                # Debug: Show raw API response
-                with st.expander("🔍 Debug Info (Click to see API response)"):
-                    st.json(result)
-                    if 'image' in result:
-                        st.write(f"📐 Image dimensions: {result['image'].get('width', '?')}x{result['image'].get('height', '?')}")
-                
                 if 'predictions' in result:
                     raw_predictions = result['predictions']
-                    st.info(f"📊 Found {len(raw_predictions)} raw predictions from API")
-                    
-                    # Show confidence scores of raw predictions
-                    if raw_predictions:
-                        confidences = [p.get('confidence', 0) for p in raw_predictions]
-                        st.write(f"Confidence scores: {[f'{c:.2%}' for c in confidences]}")
-                    else:
-                        st.warning("⚠️ API returned 0 predictions. This could mean:")
-                        st.write("""
-                        - The image might be too small (try a larger image)
-                        - Cards might not be clearly visible
-                        - Try adjusting the image angle or lighting
-                        - The model might need the cards to be more centered
-                        """)
-                    
                     predictions = utils.filter_duplicates(raw_predictions)
-                    st.info(f"✅ {len(predictions)} predictions after filtering (confidence >= {config.CONFIDENCE_THRESHOLD})")
                     
                     if predictions:
                         # Draw on image
@@ -213,9 +185,11 @@ with col1:
                         img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                         img_with_boxes = utils.draw_boxes_cv(img_bgr, predictions)
                         img_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
-                        st.image(img_rgb, caption="Detected Cards", use_container_width=True)
                         
-                        # Update card history
+                        # Display image with boxes (smaller size)
+                        st.image(img_rgb, caption=f"Detected {len(predictions)} card(s)", width=500)
+                        
+                        # Update card history (only once, no rerun)
                         for pred in predictions:
                             card_name = pred['class']
                             confidence = pred['confidence']
@@ -225,12 +199,9 @@ with col1:
                                     "confidence": confidence
                                 }
                             else:
-                                st.session_state.card_history[card_name]["count"] += 1
-                                st.session_state.card_history[card_name]["confidence"] = max(
-                                    st.session_state.card_history[card_name]["confidence"],
-                                    confidence
-                                )
-                        st.rerun()
+                                # Only update if this is a new detection or higher confidence
+                                if confidence > st.session_state.card_history[card_name]["confidence"]:
+                                    st.session_state.card_history[card_name]["confidence"] = confidence
                     else:
                         st.info("No cards detected in this image. Try a clearer image with visible playing cards.")
 
