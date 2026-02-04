@@ -170,7 +170,12 @@ with col1:
         if uploaded_file is not None:
             # Process uploaded image
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_container_width=True)
+            img_width, img_height = image.size
+            st.image(image, caption=f"Uploaded Image ({img_width}x{img_height}px)", use_container_width=True)
+            
+            # Warn if image is too small
+            if img_width < 300 or img_height < 300:
+                st.warning(f"⚠️ Image is quite small ({img_width}x{img_height}px). Larger images (800x600px or more) work better for detection.")
             
             # Run detection
             with st.spinner("Detecting cards..."):
