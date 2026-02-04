@@ -3,6 +3,8 @@ from PIL import Image
 import av
 import threading
 import time
+import cv2
+import numpy as np
 from pathlib import Path
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 from src import config
@@ -93,48 +95,115 @@ st.markdown("""
 col1, col2 = st.columns([2, 1], gap="small")
 
 with col1:
-    try:
-        ctx = webrtc_streamer(
-            key="card-detection",
-            video_processor_factory=CardDetector,
-            media_stream_constraints={
-                "video": {
-                    "width": {"ideal": 640},
-                    "height": {"ideal": 480},
-                },
-                "audio": False
-            },
-            rtc_configuration={
-                "iceServers": [
-                    {"urls": ["stun:stun.l.google.com:19302"]},
-                    {"urls": ["stun:stun1.l.google.com:19302"]}
-                ]
-            },
-            async_processing=True
-        )
-    except AttributeError as e:
-        # Handle WebRTC initialization issues gracefully
-        st.warning("⚠️ **Camera initialization in progress...**")
-        st.info("""
-        **Please wait for the camera to initialize.**
+    # Add mode selection
+    detection_mode = st.radio(
+        "Detection Mode",
+        ["Live Camera", "Upload Image"],
+        horizontal=True,
+        help="Choose between live camera detection or upload an image"
+    )
+    
+    if detection_mode == "Live Camera":
+        # Enhanced RTC configuration with multiple STUN servers
+        rtc_config = {
+            "iceServers": [
+                {"urls": ["stun:stun.l.google.com:19302"]},
+                {"urls": ["stun:stun1.l.google.com:19302"]},
+                {"urls": ["stun:stun2.l.google.com:19302"]},
+                {"urls": ["stun:stun3.l.google.com:19302"]},
+                {"urls": ["stun:stun4.l.google.com:19302"]},
+            ],
+            "iceCandidatePoolSize": 10
+        }
         
-        If the camera doesn't appear:
-        - Click "Start" button if available
-        - Grant camera permissions when prompted
-        - Try refreshing the page
-        - Ensure you're using HTTPS (required for camera access)
-        """)
+        try:
+            ctx = webrtc_streamer(
+                key="card-detection",
+                video_processor_factory=CardDetector,
+                media_stream_constraints={
+                    "video": {
+                        "width": {"ideal": 640},
+                        "height": {"ideal": 480},
+                    },
+                    "audio": False
+                },
+                rtc_configuration=rtc_config,
+                async_processing=True
+            )
+        except AttributeError as e:
+            st.warning("⚠️ **Camera initialization in progress...**")
+            st.info("""
+            **Please wait for the camera to initialize.**
+            
+            If the camera doesn't appear:
+            - Click "Start" button if available
+            - Grant camera permissions when prompted
+            - Try refreshing the page
+            - Ensure you're using HTTPS (required for camera access)
+            - If issues persist, try the "Upload Image" mode instead
+            """)
+            ctx = None
+        except Exception as e:
+            st.error(f"⚠️ **Camera connection error**: {str(e)}")
+            st.warning("""
+            **WebRTC Connection Issue Detected**
+            
+            This is a common issue on cloud platforms. Try:
+            1. **Use Upload Image mode** (recommended for cloud)
+            2. Refresh the page and try again
+            3. Check your network connection
+            4. Try a different browser
+            
+            The camera feature works best on local networks. For cloud deployment, 
+            the upload image option is more reliable.
+            """)
+            ctx = None
+    else:
+        # File upload mode
         ctx = None
-    except Exception as e:
-        st.error(f"⚠️ **Camera initialization error**: {str(e)}")
-        st.info("""
-        **Troubleshooting:**
-        - Make sure you've granted camera permissions
-        - Try refreshing the page
-        - Ensure your browser supports WebRTC
-        - Check that HTTPS is enabled (required for camera access)
-        """)
-        ctx = None
+        uploaded_file = st.file_uploader(
+            "Upload an image with playing cards",
+            type=['png', 'jpg', 'jpeg'],
+            help="Upload an image containing playing cards to detect"
+        )
+        
+        if uploaded_file is not None:
+            # Process uploaded image
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded Image", use_container_width=True)
+            
+            # Run detection
+            with st.spinner("Detecting cards..."):
+                result = utils.detect_cards(image, CLIENT)
+                if 'predictions' in result:
+                    predictions = utils.filter_duplicates(result['predictions'])
+                    
+                    if predictions:
+                        # Draw on image
+                        img_array = np.array(image)
+                        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+                        img_with_boxes = utils.draw_boxes_cv(img_bgr, predictions)
+                        img_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
+                        st.image(img_rgb, caption="Detected Cards", use_container_width=True)
+                        
+                        # Update card history
+                        for pred in predictions:
+                            card_name = pred['class']
+                            confidence = pred['confidence']
+                            if card_name not in st.session_state.card_history:
+                                st.session_state.card_history[card_name] = {
+                                    "count": 1,
+                                    "confidence": confidence
+                                }
+                            else:
+                                st.session_state.card_history[card_name]["count"] += 1
+                                st.session_state.card_history[card_name]["confidence"] = max(
+                                    st.session_state.card_history[card_name]["confidence"],
+                                    confidence
+                                )
+                        st.rerun()
+                    else:
+                        st.info("No cards detected in this image. Try a clearer image with visible playing cards.")
 
 with col2:
     total_cards = sum(data["count"] for data in st.session_state.card_history.values()) if st.session_state.card_history else 0
@@ -170,8 +239,8 @@ with col2:
         </div>
         """, unsafe_allow_html=True)
 
-# Update loop - continuously check for new card detections
-if ctx is not None and hasattr(ctx, 'state') and ctx.state.playing and hasattr(ctx, 'video_processor') and ctx.video_processor:
+# Update loop - continuously check for new card detections (only for camera mode)
+if detection_mode == "Live Camera" and ctx is not None and hasattr(ctx, 'state') and ctx.state.playing and hasattr(ctx, 'video_processor') and ctx.video_processor:
     while ctx.state.playing and ctx.video_processor:
         try:
             predictions = ctx.video_processor.get_predictions()
