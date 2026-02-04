@@ -187,7 +187,7 @@ with col1:
                         img_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
                         
                         # Display image with boxes (smaller size)
-                        st.image(img_rgb, caption=f"Detected {len(predictions)} card(s)", width=500)
+                        st.image(img_rgb, width=500)
                         
                         # Update card history (only once, no rerun)
                         for pred in predictions:
