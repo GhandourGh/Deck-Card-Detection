@@ -67,9 +67,10 @@ def detect_cards(image, client):
         
         # Parse model_id (format: "workspace/project/version")
         # MODEL_ID is "playing-cards-ow27d/4"
-        # Need to split into workspace/project and version
+        # Roboflow format: workspace/project/version
         model_parts = config.MODEL_ID.split('/')
         if len(model_parts) == 2:
+            # Split workspace/project from version
             workspace_project = model_parts[0]  # "playing-cards-ow27d"
             version = model_parts[1]  # "4"
         else:
@@ -77,7 +78,8 @@ def detect_cards(image, client):
             workspace_project = config.MODEL_ID
             version = "1"
         
-        # Make direct API call with proper headers
+        # Roboflow serverless inference endpoint format
+        # https://serverless.roboflow.com/{workspace}/{project}/{version}
         url = f"{config.API_URL}/{workspace_project}/{version}"
         
         files = {
