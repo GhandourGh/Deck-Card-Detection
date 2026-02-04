@@ -65,39 +65,26 @@ def detect_cards(image, client):
         # Get API key from secrets
         api_key = st.secrets["ROBOFLOW_API_KEY"]
         
-        # Parse model_id (format: "workspace/project/version")
-        # MODEL_ID is "playing-cards-ow27d/4"
-        # Roboflow format: workspace/project/version
-        model_parts = config.MODEL_ID.split('/')
-        if len(model_parts) == 2:
-            # Split workspace/project from version
-            workspace_project = model_parts[0]  # "playing-cards-ow27d"
-            version = model_parts[1]  # "4"
-        else:
-            # Fallback if format is different
-            workspace_project = config.MODEL_ID
-            version = "1"
+        # Roboflow serverless API endpoint format
+        # The model_id "playing-cards-ow27d/4" needs to be used directly
+        # Format: https://serverless.roboflow.com/{model_id}
+        # But we need to URL encode the model_id
+        from urllib.parse import quote
+        encoded_model_id = quote(config.MODEL_ID, safe='')
+        url = f"{config.API_URL}/{encoded_model_id}"
         
-        # Roboflow serverless inference endpoint format
-        # Try different endpoint formats
-        # Format 1: https://serverless.roboflow.com/{workspace}/{project}/{version}
-        # Format 2: https://serverless.roboflow.com/infer/{model_id}
-        # Let's try the model_id format first as it's more standard
-        url = f"{config.API_URL}/infer/{config.MODEL_ID}"
-        
+        # Roboflow expects the image as 'file' parameter
         files = {
             'file': ('image.jpg', img_bytes, 'image/jpeg')
         }
         
-        headers = {
-            'Authorization': f'Bearer {api_key}'
-        }
-        
+        # Roboflow API uses api_key as query parameter, not Bearer token
         params = {
             'api_key': api_key
         }
         
-        response = requests.post(url, files=files, headers=headers, params=params, timeout=30)
+        # Don't set Authorization header - use api_key in params instead
+        response = requests.post(url, files=files, params=params, timeout=30)
         response.raise_for_status()
         
         result = response.json()
@@ -118,8 +105,29 @@ def detect_cards(image, client):
         return result
         
     except requests.exceptions.RequestException as e:
-        st.error(f"Error detecting cards (HTTP): {str(e)}")
-        # Try SDK method as fallback
+        error_msg = str(e)
+        st.error(f"Error detecting cards (HTTP): {error_msg}")
+        
+        # If 405 error, try alternative endpoint format
+        if "405" in error_msg:
+            try:
+                # Try alternative format: workspace/project/version
+                model_parts = config.MODEL_ID.split('/')
+                if len(model_parts) == 2:
+                    workspace_project = model_parts[0]
+                    version = model_parts[1]
+                    alt_url = f"{config.API_URL}/{workspace_project}/{version}"
+                    response = requests.post(alt_url, files=files, params=params, timeout=30)
+                    response.raise_for_status()
+                    result = response.json()
+                    if 'predictions' not in result:
+                        if 'results' in result:
+                            result['predictions'] = result['results']
+                    return result
+            except Exception as e3:
+                st.warning(f"Alternative endpoint also failed: {str(e3)}")
+        
+        # Try SDK method as final fallback
         try:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
