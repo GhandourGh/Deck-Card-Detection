@@ -179,6 +179,8 @@ with col1:
                 # Debug: Show raw API response
                 with st.expander("🔍 Debug Info (Click to see API response)"):
                     st.json(result)
+                    if 'image' in result:
+                        st.write(f"📐 Image dimensions: {result['image'].get('width', '?')}x{result['image'].get('height', '?')}")
                 
                 if 'predictions' in result:
                     raw_predictions = result['predictions']
@@ -188,6 +190,14 @@ with col1:
                     if raw_predictions:
                         confidences = [p.get('confidence', 0) for p in raw_predictions]
                         st.write(f"Confidence scores: {[f'{c:.2%}' for c in confidences]}")
+                    else:
+                        st.warning("⚠️ API returned 0 predictions. This could mean:")
+                        st.write("""
+                        - The image might be too small (try a larger image)
+                        - Cards might not be clearly visible
+                        - Try adjusting the image angle or lighting
+                        - The model might need the cards to be more centered
+                        """)
                     
                     predictions = utils.filter_duplicates(raw_predictions)
                     st.info(f"✅ {len(predictions)} predictions after filtering (confidence >= {config.CONFIDENCE_THRESHOLD})")

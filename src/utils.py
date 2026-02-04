@@ -78,9 +78,12 @@ def detect_cards(image, client):
             'file': ('image.jpg', img_bytes, 'image/jpeg')
         }
         
-        # Roboflow API uses api_key as query parameter, not Bearer token
+        # Roboflow API parameters
+        # Add confidence and overlap parameters to get more detections
         params = {
-            'api_key': api_key
+            'api_key': api_key,
+            'confidence': 30,  # Lower confidence threshold (30% instead of default 50%)
+            'overlap': 30,     # Overlap threshold
         }
         
         # Don't set Authorization header - use api_key in params instead
