@@ -6,7 +6,6 @@ from io import BytesIO
 import base64
 import cv2
 import streamlit as st
-import requests
 from inference_sdk import InferenceHTTPClient
 from src import config
 
@@ -14,30 +13,9 @@ from src import config
 @st.cache_resource
 def get_client():
     """Get cached Roboflow inference client."""
-    try:
-        api_key = st.secrets["ROBOFLOW_API_KEY"]
-    except KeyError:
-        st.error("""
-        ⚠️ **API Key Missing!**
-        
-        Please add your Roboflow API key to Streamlit Cloud secrets:
-        
-        1. Go to your app dashboard on Streamlit Cloud
-        2. Click **Settings** (⚙️ icon)
-        3. Go to **Secrets** tab
-        4. Add the following:
-        
-        ```toml
-        ROBOFLOW_API_KEY = "your-api-key-here"
-        ```
-        
-        5. Click **Save** and the app will redeploy
-        """)
-        st.stop()
-    
     return InferenceHTTPClient(
         api_url=config.API_URL,
-        api_key=api_key
+        api_key=st.secrets["ROBOFLOW_API_KEY"]
     )
 
 
@@ -53,92 +31,10 @@ def detect_cards(image, client):
         dict: API response with predictions
     """
     try:
-        # Convert to RGB if necessary
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Save image to bytes
         img_byte_arr = BytesIO()
-        image.save(img_byte_arr, format='JPEG', quality=95)
-        img_bytes = img_byte_arr.getvalue()
-        
-        # Get API key from secrets
-        api_key = st.secrets["ROBOFLOW_API_KEY"]
-        
-        # Roboflow serverless API endpoint format
-        # The model_id "playing-cards-ow27d/4" needs to be used directly
-        # Format: https://serverless.roboflow.com/{model_id}
-        # But we need to URL encode the model_id
-        from urllib.parse import quote
-        encoded_model_id = quote(config.MODEL_ID, safe='')
-        url = f"{config.API_URL}/{encoded_model_id}"
-        
-        # Roboflow expects the image as 'file' parameter
-        files = {
-            'file': ('image.jpg', img_bytes, 'image/jpeg')
-        }
-        
-        # Roboflow API parameters
-        # Add confidence and overlap parameters to get more detections
-        params = {
-            'api_key': api_key,
-            'confidence': 30,  # Lower confidence threshold (30% instead of default 50%)
-            'overlap': 30,     # Overlap threshold
-        }
-        
-        # Don't set Authorization header - use api_key in params instead
-        response = requests.post(url, files=files, params=params, timeout=30)
-        response.raise_for_status()
-        
-        result = response.json()
-        
-        # Debug: Log the response structure (only in development)
-        # st.write("API Response:", result)  # Uncomment for debugging
-        
-        # Ensure result has predictions key
-        if 'predictions' not in result:
-            # Roboflow might return data in different format
-            if 'results' in result:
-                result['predictions'] = result['results']
-            elif isinstance(result, list):
-                result = {'predictions': result}
-            elif 'detections' in result:
-                result['predictions'] = result['detections']
-        
-        return result
-        
-    except requests.exceptions.RequestException as e:
-        error_msg = str(e)
-        st.error(f"Error detecting cards (HTTP): {error_msg}")
-        
-        # If 405 error, try alternative endpoint format
-        if "405" in error_msg:
-            try:
-                # Try alternative format: workspace/project/version
-                model_parts = config.MODEL_ID.split('/')
-                if len(model_parts) == 2:
-                    workspace_project = model_parts[0]
-                    version = model_parts[1]
-                    alt_url = f"{config.API_URL}/{workspace_project}/{version}"
-                    response = requests.post(alt_url, files=files, params=params, timeout=30)
-                    response.raise_for_status()
-                    result = response.json()
-                    if 'predictions' not in result:
-                        if 'results' in result:
-                            result['predictions'] = result['results']
-                    return result
-            except Exception as e3:
-                st.warning(f"Alternative endpoint also failed: {str(e3)}")
-        
-        # Try SDK method as final fallback
-        try:
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            result = client.infer(image, model_id=config.MODEL_ID)
-            return result
-        except Exception as e2:
-            st.error(f"SDK fallback also failed: {str(e2)}")
-            return {'predictions': []}
+        image.save(img_byte_arr, format='PNG')
+        img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+        return client.infer(img_base64, model_id=config.MODEL_ID)
     except Exception as e:
         st.error(f"Error detecting cards: {str(e)}")
         return {'predictions': []}
