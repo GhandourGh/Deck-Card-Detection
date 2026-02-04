@@ -171,7 +171,7 @@ with col2:
         """, unsafe_allow_html=True)
 
 # Update loop - continuously check for new card detections
-if ctx and hasattr(ctx, 'state') and ctx.state.playing and ctx.video_processor:
+if ctx is not None and hasattr(ctx, 'state') and ctx.state.playing and hasattr(ctx, 'video_processor') and ctx.video_processor:
     while ctx.state.playing and ctx.video_processor:
         try:
             predictions = ctx.video_processor.get_predictions()
