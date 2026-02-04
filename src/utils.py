@@ -52,13 +52,26 @@ def detect_cards(image, client):
         dict: API response with predictions
     """
     try:
-        img_byte_arr = BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
-        return client.infer(img_base64, model_id=config.MODEL_ID)
+        # Roboflow SDK can accept PIL Image directly
+        # Convert to RGB if necessary (some images might be RGBA)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Pass PIL Image directly to the infer method
+        result = client.infer(image, model_id=config.MODEL_ID)
+        return result
     except Exception as e:
         st.error(f"Error detecting cards: {str(e)}")
-        return {'predictions': []}
+        # Try fallback method with base64 if direct PIL fails
+        try:
+            img_byte_arr = BytesIO()
+            image.save(img_byte_arr, format='PNG')
+            img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+            result = client.infer(img_base64, model_id=config.MODEL_ID)
+            return result
+        except Exception as e2:
+            st.error(f"Fallback method also failed: {str(e2)}")
+            return {'predictions': []}
 
 
 def get_full_card_name(card_name):
